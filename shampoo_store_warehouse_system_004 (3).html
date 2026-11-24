@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HERBALGLOW - ผลิตภัณฑ์ดูแลเส้นผม & ระบบจัดการคลังสินค้า (โจทย์ 004)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Prompt & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Prompt', 'Inter', sans-serif;
+        }
+        /* Print styles for Shipping Label */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-label-area, #print-label-area * {
+                visibility: visible;
+            }
+            #print-label-area {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 16px;
+                box-shadow: none !important;
+                border: 2px solid #000 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-wrap items-center justify-between py-3 gap-3">
+                <!-- Brand Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center text-white shadow-md">
+                        <i data-lucide="sparkles" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg sm:text-xl tracking-tight text-slate-900">HERBAL<span class="text-emerald-600">GLOW</span></span>
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">รหัส 004</span>
+                        </div>
+                        <p class="text-xs text-slate-500 hidden sm:block">Shampoo E-Commerce & WMS (Pick-Pack-Ship)</p>
+                    </div>
+                </div>
+
+                <!-- View Switcher Tabs -->
+                <nav class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full">
+                    <button onclick="switchTab('store')" id="tab-store" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all bg-white text-emerald-700 shadow-sm whitespace-nowrap">
+                        <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                        <span>หน้าร้านค้า (Storefront)</span>
+                    </button>
+                    <button onclick="switchTab('warehouse')" id="tab-warehouse" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap">
+                        <i data-lucide="package-check" class="w-4 h-4"></i>
+                        <span>คลังสินค้า & Google Sheet</span>
+                        <span id="pending-badge" class="ml-1 px-1.5 py-0.2 text-xs font-bold rounded-full bg-amber-500 text-white">2</span>
+                    </button>
+                    <button onclick="switchTab('guide')" id="tab-guide" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap">
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                        <span>คู่มือ GitHub / Sheet / Vercel</span>
+                    </button>
+                </nav>
+
+                <!-- Cart Button (Visible in Store View) -->
+                <div id="header-cart-btn-wrapper">
+                    <button onclick="toggleCartDrawer(true)" class="relative flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow-sm transition-all active:scale-95">
+                        <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">ตะกร้าสินค้า</span>
+                        <span id="cart-count-badge" class="bg-white text-emerald-700 font-bold text-xs px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: CUSTOMER STOREFRONT (LANDING PAGE) -->
+    <!-- ========================================== -->
+    <main id="view-store" class="flex-1 no-print">
+        <!-- Hero Banner -->
+        <section class="relative bg-gradient-to-br from-emerald-900 via-teal-800 to-emerald-950 text-white overflow-hidden">
+            <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]"></div>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 relative z-10">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    <div class="lg:col-span-7 space-y-5">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs sm:text-sm font-medium">
+                            <i data-lucide="leaf" class="w-4 h-4"></i>
+                            <span>สารสกัดธรรมชาติ 100% ปราศจากซิลิโคนและพาราเบน</span>
+                        </div>
+                        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
+                            ฟื้นบำรุงเส้นผมแข็งแรง<br>
+                            <span class="text-emerald-300">ลดผมขาดหลุดร่วงอย่างตรงจุด</span>
+                        </h1>
+                        <p class="text-emerald-100/90 text-base sm:text-lg max-w-2xl leading-relaxed">
+                            นวัตกรรมแชมพูสมุนไพรผสานคุณค่าธรรมชาติ คัดสรรสูตรเฉพาะเพื่อแก้ปัญหาเส้นผมและหนังศีรษะของคนไทย จัดส่งรวดเร็วพร้อมระบบตรวจสอบ SKU แม่นยำทุกออเดอร์
+                        </p>
+                        <div class="flex flex-wrap gap-3 pt-2">
+                            <a href="#products-section" class="inline-flex items-center gap-2 bg-white text-emerald-900 hover:bg-emerald-50 font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all">
+                                <span>เลือกซื้อสินค้าเลย</span>
+                                <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                            </a>
+                            <button onclick="switchTab('warehouse')" class="inline-flex items-center gap-2 bg-emerald-800/60 hover:bg-emerald-800 text-white border border-emerald-500/40 font-medium px-5 py-3.5 rounded-xl transition-all">
+                                <i data-lucide="database" class="w-4 h-4"></i>
+                                <span>ดูระบบคลังสินค้า & Google Sheet</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Visual Product Showcase Card -->
+                    <div class="lg:col-span-5 flex justify-center">
+                        <div class="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Best Seller Set</span>
+                                <span class="px-2.5 py-1 rounded-full bg-amber-400 text-slate-900 text-xs font-bold">ส่งฟรีเมื่อสั่ง 2 ขวดขึ้นไป</span>
+                            </div>
+                            <div class="aspect-[4/3] rounded-2xl bg-gradient-to-tr from-emerald-100 to-teal-50 flex items-center justify-center p-4 mb-4 overflow-hidden relative">
+                                <!-- SVG Shampoo Bottles Illustration -->
+                                <svg viewBox="0 0 240 160" class="w-full h-full drop-shadow-md">
+                                    <!-- Bottle 1: Purple Butterfly Pea -->
+                                    <rect x="45" y="45" width="44" height="95" rx="10" fill="#4f46e5"/>
+                                    <rect x="57" y="28" width="20" height="17" rx="3" fill="#312e81"/>
+                                    <path d="M52 24 H82 L78 28 H56 Z" fill="#1e1b4b"/>
+                                    <rect x="50" y="68" width="34" height="48" rx="4" fill="#ffffff" opacity="0.9"/>
+                                    <text x="67" y="88" font-size="7" font-weight="bold" text-anchor="middle" fill="#312e81">SKU-001</text>
+                                    <text x="67" y="100" font-size="6" text-anchor="middle" fill="#4f46e5">อัญชันสด</text>
+                                    <!-- Bottle 2: Mint Cool -->
+                                    <rect x="100" y="38" width="46" height="102" rx="10" fill="#0d9488"/>
+                                    <rect x="113" y="20" width="20" height="18" rx="3" fill="#115e59"/>
+                                    <path d="M108 16 H138 L134 20 H112 Z" fill="#042f2e"/>
+                                    <rect x="105" y="62" width="36" height="52" rx="4" fill="#ffffff" opacity="0.9"/>
+                                    <text x="123" y="84" font-size="7" font-weight="bold" text-anchor="middle" fill="#115e59">SKU-002</text>
+                                    <text x="123" y="96" font-size="6" text-anchor="middle" fill="#0d9488">สูตรเย็น</text>
+                                    <!-- Bottle 3: Conditioner -->
+                                    <rect x="157" y="52" width="42" height="88" rx="10" fill="#d97706"/>
+                                    <rect x="168" y="36" width="20" height="16" rx="3" fill="#78350f"/>
+                                    <rect x="162" y="72" width="32" height="44" rx="4" fill="#ffffff" opacity="0.9"/>
+                                    <text x="178" y="91" font-size="7" font-weight="bold" text-anchor="middle" fill="#78350f">SKU-003</text>
+                                    <text x="178" y="103" font-size="6" text-anchor="middle" fill="#b45309">ครีมนวด</text>
+                                </svg>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <div>
+                                    <p class="font-semibold text-white">สินค้าพร้อมส่งจากคลัง</p>
+                                    <p class="text-xs text-emerald-200">ระบบจัดการ SKU อัตโนมัติ 100%</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs text-emerald-300 block">เริ่มต้นเพียง</span>
+                                    <span class="text-xl font-bold text-white">฿259</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Key Benefits Bar -->
+        <section class="bg-white border-b border-slate-200 py-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="flex items-center gap-3 p-2">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                            <i data-lucide="shield-check" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">ผ่านการทดสอบแพทย์ผิวหนัง</h3>
+                            <p class="text-xs text-slate-500">อ่อนโยน ไม่ระคายเคือง</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                            <i data-lucide="barcode" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">ระบบรหัส SKU มาตรฐาน</h3>
+                            <p class="text-xs text-slate-500">หยิบ-แพ็คตรงปก ไม่ผิดสูตร</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                            <i data-lucide="truck" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">จัดส่งไวทั่วประเทศ</h3>
+                            <p class="text-xs text-slate-500">ตัดรอบส่งทุกวัน 15:00 น.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-2">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">บันทึกข้อมูลเรียลไทม์</h3>
+                            <p class="text-xs text-slate-500">เชื่อมต่อฐานข้อมูล Google Sheet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Catalog Section (3 SKUs) -->
+        <section id="products-section" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">OUR PRODUCTS (3 SKUs)</span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">เลือกสูตรแชมพูที่เหมาะกับคุณ</h2>
+                    <p class="text-sm text-slate-500 mt-1">สินค้าทุกรายการแสดงรหัส SKU และตำแหน่งจัดเก็บในคลังชัดเจน</p>
+                </div>
+                <div class="inline-flex items-center gap-2 text-xs text-slate-500 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">
+                    <i data-lucide="folder-git-2" class="w-4 h-4 text-slate-700"></i>
+                    <span>รูปภาพจำลองจากโฟลเดอร์ <code class="font-mono font-semibold text-emerald-700">github/images/</code></span>
+                </div>
+            </div>
+
+            <!-- Product Grid -->
+            <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Products rendered via JS -->
+            </div>
+        </section>
+
+        <!-- Quick Order Form Section (Direct Checkout on Landing Page) -->
+        <section id="checkout-section" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+                            <i data-lucide="clipboard-edit" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold">แบบฟอร์มสั่งซื้อสินค้า & จัดส่งพัสดุ</h2>
+                            <p class="text-xs text-slate-300">ข้อมูลจะถูกบันทึกลง Google Sheet และส่งไปยังฝ่ายคลังสินค้าทันที</p>
+                        </div>
+                    </div>
+                    <span class="hidden sm:inline-block text-xs bg-slate-800 text-emerald-400 px-3 py-1 rounded-full border border-slate-700">Auto-Sync Google Sheet</span>
+                </div>
+
+                <div class="p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <!-- Order Summary Column -->
+                    <div class="lg:col-span-5 bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-semibold text-slate-900 mb-3 flex items-center justify-between">
+                                <span>รายการสินค้าในตะกร้า</span>
+                                <span id="form-cart-count" class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">0 ชิ้น</span>
+                            </h3>
+                            <div id="checkout-items-list" class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                                <!-- Cart items injected here -->
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 mt-4 pt-4 space-y-2">
+                            <div class="flex justify-between text-sm text-slate-600">
+                                <span>ค่าจัดส่ง (EMS / Flash)</span>
+                                <span id="checkout-shipping" class="font-medium text-emerald-600">ฟรี</span>
+                            </div>
+                            <div class="flex justify-between text-base font-bold text-slate-900 pt-1">
+                                <span>ยอดชำระสุทธิ</span>
+                                <span id="checkout-total" class="text-xl text-emerald-600">฿0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Address Form Column -->
+                    <form id="order-form" onsubmit="handleOrderSubmit(event)" class="lg:col-span-7 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">ชื่อ-นามสกุล ผู้รับ <span class="text-rose-500">*</span></label>
+                                <input type="text" id="cust-name" required placeholder="เช่น สมชาย ใจดี" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">เบอร์โทรศัพท์ติดต่อ <span class="text-rose-500">*</span></label>
+                                <input type="tel" id="cust-phone" required placeholder="เช่น 081-234-5678" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">ที่อยู่สำหรับจัดส่งพัสดุ <span class="text-rose-500">*</span></label>
+                            <textarea id="cust-address" rows="3" required placeholder="บ้านเลขที่, หมู่บ้าน/อาคาร, ซอย, ถนน, แขวง/ตำบล, เขต/อำเภอ, จังหวัด" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">รหัสไปรษณีย์ <span class="text-rose-500">*</span></label>
+                                <input type="text" id="cust-zip" required maxlength="5" placeholder="เช่น 10220" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">ช่องทางชำระเงิน</label>
+                                <select id="cust-payment" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm bg-white">
+                                    <option value="COD (เก็บเงินปลายทาง)">เก็บเงินปลายทาง (COD)</option>
+                                    <option value="โอนเงินผ่านธนาคาร / PromptPay">โอนเงินผ่านธนาคาร / PromptPay</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" id="submit-order-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="send" class="w-5 h-5"></i>
+                                <span>ยืนยันการสั่งซื้อ & บันทึกลง Google Sheet</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- VIEW 2: WAREHOUSE MANAGEMENT & GOOGLE SHEET DATABASE VIEW    -->
+    <!-- ============================================================ -->
+    <main id="view-warehouse" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 no-print">
+        
+        <!-- Top Stats & Google Sheet Connection Bar -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="flex items-start sm:items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold text-slate-900">ระบบคลังสินค้า & ฐานข้อมูล Google Sheet</h1>
+                        <span id="sheet-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            จำลองการเชื่อมต่อ Sheet พร้อมใช้งาน
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">ตรวจสอบออเดอร์ หยิบสินค้าตามรหัส SKU แพ็คลงกล่อง และพิมพ์ใบจ่าหน้าพัสดุ</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="openSheetConfigModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all">
+                    <i data-lucide="link" class="w-4 h-4"></i>
+                    <span>ตั้งค่า Google Sheet URL</span>
+                </button>
+                <button onclick="exportToCSV()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Export CSV (เปิดใน Sheet)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Warehouse KPI Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <span class="text-xs font-medium text-slate-500">ออเดอร์ทั้งหมดใน Sheet</span>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="stat-total-orders" class="text-2xl font-bold text-slate-900">0</span>
+                    <span class="text-xs text-slate-400">รายการ</span>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-amber-200 bg-amber-50/30 shadow-sm">
+                <span class="text-xs font-medium text-amber-800">รอหยิบ & แพ็คสินค้า (To Pick)</span>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="stat-pending-orders" class="text-2xl font-bold text-amber-600">0</span>
+                    <span class="text-xs text-amber-700">ต้องจัดการ</span>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-blue-200 bg-blue-50/30 shadow-sm">
+                <span class="text-xs font-medium text-blue-800">แพ็คแล้ว / รอส่ง (Packed)</span>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="stat-packed-orders" class="text-2xl font-bold text-blue-600">0</span>
+                    <span class="text-xs text-blue-700">พร้อมพิมพ์ใบปะหน้า</span>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-emerald-200 bg-emerald-50/30 shadow-sm">
+                <span class="text-xs font-medium text-emerald-800">จัดส่งสำเร็จแล้ว (Shipped)</span>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="stat-shipped-orders" class="text-2xl font-bold text-emerald-600">0</span>
+                    <span class="text-xs text-emerald-700">เรียบร้อย</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consolidated Pick List Summary (Batch Picking Helper) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="boxes" class="w-5 h-5 text-emerald-600"></i>
+                        <span>ใบสรุปรวมสินค้าที่ต้องเดินหยิบจากชั้นวาง (Consolidated Pick List)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500">รวมจำนวนสินค้าแยกตามรหัส SKU จากออเดอร์ที่ยังไม่ได้แพ็ค เพื่อป้องกันการหยิบผิดสูตร</p>
+                </div>
+            </div>
+            <div id="batch-pick-summary" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Batch pick cards injected via JS -->
+            </div>
+        </div>
+
+        <!-- Google Sheet Style Orders Table -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-sm bg-emerald-600"></span>
+                    <h2 class="font-bold text-slate-800 text-sm sm:text-base">ตารางข้อมูลออเดอร์ (Google Sheet: Orders_DB)</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="filter-status" onchange="renderWarehouseView()" class="text-xs sm:text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-slate-700 outline-none">
+                        <option value="ALL">แสดงทุกสถานะ</option>
+                        <option value="รอหยิบสินค้า">รอหยิบสินค้า (Pending)</option>
+                        <option value="แพ็คเสร็จแล้ว">แพ็คเสร็จแล้ว (Packed)</option>
+                        <option value="จัดส่งแล้ว">จัดส่งแล้ว (Shipped)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 border-b border-slate-200 text-xs uppercase">
+                            <th class="py-3 px-4 font-semibold border-r border-slate-200">Order ID</th>
+                            <th class="py-3 px-4 font-semibold border-r border-slate-200">วันที่/เวลา</th>
+                            <th class="py-3 px-4 font-semibold border-r border-slate-200">ข้อมูลลูกค้า & ที่อยู่จัดส่ง</th>
+                            <th class="py-3 px-4 font-semibold border-r border-slate-200">รายการ SKU ที่สั่ง (Pick List)</th>
+                            <th class="py-3 px-4 font-semibold border-r border-slate-200 text-right">ยอดรวม</th>
+                            <th class="py-3 px-4 font-semibold border-r border-slate-200 text-center">สถานะ</th>
+                            <th class="py-3 px-4 font-semibold text-center">จัดการ (หยิบ / แพ็ค / พิมพ์)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body" class="divide-y divide-slate-200">
+                        <!-- Order rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- VIEW 3: DEPLOYMENT & SETUP GUIDE (GITHUB + SHEET + VERCEL)   -->
+    <!-- ============================================================ -->
+    <main id="view-guide" class="hidden flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 no-print">
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+            <div class="border-b border-slate-200 pb-5">
+                <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">คู่มือส่งงานตามโจทย์รหัส 004</span>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">ขั้นตอนการนำระบบขึ้น GitHub, Google Sheet และ Vercel</h1>
+                <p class="text-sm text-slate-500 mt-1">สรุปโครงสร้างโปรเจกต์และโค้ด Google Apps Script สำหรับเชื่อมต่อฐานข้อมูลจริง</p>
+            </div>
+
+            <!-- Step 1: GitHub Folder Structure -->
+            <div class="space-y-3">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-full bg-slate-900 text-white text-sm flex items-center justify-center">1</span>
+                    <span>การสร้างโฟลเดอร์เก็บรูปแยกต่างหากใน GitHub</span>
+                </h2>
+                <p class="text-sm text-slate-600">สร้าง Repository ใหม่บน GitHub และจัดโครงสร้างโฟลเดอร์ให้มีโฟลเดอร์ <code class="bg-slate-100 px-1.5 py-0.5 rounded text-emerald-700 font-mono">images/</code> แยกสำหรับเก็บรูปสินค้าแต่ละ SKU ดังนี้:</p>
+                <div class="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs sm:text-sm overflow-x-auto">
+<pre>my-shampoo-store/
+├── index.html               # ไฟล์หน้าเว็บหลัก (คัดลอกโค้ดจากหน้านี้ไปวางได้เลย)
+└── images/                  # โฟลเดอร์เก็บรูปภาพสินค้าแยกต่างหากตามโจทย์
+    ├── sku-001-butterfly.jpg   # รูปแชมพูสมุนไพรอัญชัน
+    ├── sku-002-menthol.jpg     # รูปแชมพูสูตรเย็นขจัดรังแค
+    └── sku-003-conditioner.jpg # รูปครีมนวดผมสมุนไพร</pre>
+                </div>
+                <p class="text-xs text-slate-500">* หมายเหตุ: ในโค้ดหน้าเว็บนี้ได้ตั้งค่า <code class="font-mono">src="images/sku-001-butterfly.jpg"</code> ไว้เรียบร้อยแล้ว พร้อมระบบภาพ SVG สำรองอัตโนมัติหากยังไม่ได้อัปโหลดไฟล์รูปภาพจริง</p>
+            </div>
+
+            <!-- Step 2: Google Sheet & Apps Script -->
+            <div class="space-y-3 pt-2">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-full bg-emerald-600 text-white text-sm flex items-center justify-center">2</span>
+                    <span>การเชื่อมต่อ Google Sheet จริงด้วย Google Apps Script</span>
+                </h2>
+                <ol class="list-decimal list-inside text-sm text-slate-600 space-y-1.5 ml-1">
+                    <li>สร้าง Google Sheet ใหม่ ตั้งชื่อหัวตารางแถวที่ 1: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">OrderID | Timestamp | CustomerName | Phone | Address | ZipCode | ItemsSKU | TotalAmount | Status</code></li>
+                    <li>ไปที่เมนู <strong>ส่วนขยาย (Extensions) &gt; Apps Script</strong></li>
+                    <li>คัดลอกโค้ดด้านล่างไปวาง แล้วกด <strong>Deploy &gt; New deployment &gt; Web app</strong> (ตั้งค่า Who has access เป็น <strong>Anyone</strong>)</li>
+                    <li>นำ Web App URL ที่ได้ มาใส่ในปุ่ม <strong>"ตั้งค่า Google Sheet URL"</strong> ในแท็บคลังสินค้า</li>
+                </ol>
+
+                <div class="relative">
+                    <button onclick="copyAppsScript()" class="absolute top-3 right-3 bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg border border-white/20 flex items-center gap-1.5 transition-all">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                        <span>คัดลอกโค้ด Script</span>
+                    </button>
+                    <pre id="apps-script-code" class="bg-slate-900 text-emerald-300 p-4 rounded-2xl font-mono text-xs overflow-x-auto leading-relaxed">function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  
+  sheet.appendRow([
+    data.orderId,
+    data.timestamp,
+    data.customerName,
+    "'" + data.phone,
+    data.address,
+    data.zipCode,
+    data.itemsSummary,
+    data.totalAmount,
+    data.status
+  ]);
+  
+  return ContentService.createTextOutput(JSON.stringify({result: "success"}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                </div>
+            </div>
+
+            <!-- Step 3: Deploy on Vercel -->
+            <div class="space-y-3 pt-2">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">3</span>
+                    <span>การนำไฟล์ขึ้นโดเมนของ Vercel</span>
+                </h2>
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-slate-700 space-y-1.5">
+                    <p>1. เข้าเว็บไซต์ <strong>vercel.com</strong> และเข้าสู่ระบบด้วยบัญชี GitHub</p>
+                    <p>2. กดปุ่ม <strong>Add New... &gt; Project</strong> แล้วเลือก Repository <code class="font-mono font-semibold">my-shampoo-store</code> ที่สร้างไว้</p>
+                    <p>3. กดปุ่ม <strong>Deploy</strong> รอประมาณ 30 วินาที จะได้ลิงก์เว็บไซต์ <code class="font-mono text-blue-700">https://your-project.vercel.app</code> สำหรับส่งคำตอบได้ทันที</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- SLIDE-OVER SHOPPING CART DRAWER            -->
+    <!-- ========================================== -->
+    <div id="cart-drawer" class="fixed inset-0 z-50 hidden no-print">
+        <div onclick="toggleCartDrawer(false)" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"></div>
+        <div class="fixed inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl flex flex-col z-10">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="shopping-bag" class="w-5 h-5 text-emerald-600"></i>
+                    <h2 class="text-lg font-bold text-slate-900">ตะกร้าสินค้าของคุณ</h2>
+                </div>
+                <button onclick="toggleCartDrawer(false)" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="drawer-cart-items" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Cart items injected via JS -->
+            </div>
+
+            <div class="p-6 border-t border-slate-200 bg-slate-50 space-y-4">
+                <div class="flex items-center justify-between text-base font-bold text-slate-900">
+                    <span>ยอดรวมทั้งหมด</span>
+                    <span id="drawer-cart-total" class="text-xl text-emerald-600">฿0</span>
+                </div>
+                <button onclick="proceedToCheckout()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                    <span>ไปกรอกที่อยู่จัดส่ง</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: PICK & PACK CHECKLIST + SHIPPING LABEL GENERATOR      -->
+    <!-- ============================================================ -->
+    <div id="fulfillment-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div onclick="closeFulfillmentModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs no-print"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden z-10">
+                
+                <!-- Modal Header (Hidden on Print) -->
+                <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between no-print">
+                    <div class="flex items-center gap-2.5">
+                        <i data-lucide="package-check" class="w-5 h-5 text-emerald-400"></i>
+                        <h3 class="font-bold text-base sm:text-lg">ระบบหยิบสินค้า (Pick) แพ็คสินค้า (Pack) & ใบจ่าหน้าพัสดุ</h3>
+                    </div>
+                    <button onclick="closeFulfillmentModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- Left Column: Pick & Pack Interactive Checklist (No Print) -->
+                    <div class="lg:col-span-6 space-y-4 no-print">
+                        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                            <h4 class="font-bold text-amber-900 text-sm flex items-center gap-2">
+                                <i data-lucide="scan-line" class="w-4 h-4"></i>
+                                <span>ขั้นตอนที่ 1: ตรวจสอบรายการหยิบ & แพ็คสินค้า</span>
+                            </h4>
+                            <p class="text-xs text-amber-800 mt-1">ติ๊กถูกให้ครบทุกรหัส SKU ก่อนปิดกล่องพัสดุเพื่อป้องกันการส่งผิดสูตร</p>
+                        </div>
+
+                        <div id="modal-pick-checklist" class="space-y-2.5">
+                            <!-- Interactive checkboxes injected via JS -->
+                        </div>
+
+                        <div class="pt-2 flex flex-col gap-2">
+                            <button id="btn-confirm-packed" onclick="markOrderAsPacked()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                                <span>ยืนยันแพ็คสินค้าครบถ้วนแล้ว (Update Sheet)</span>
+                            </button>
+                            <button id="btn-confirm-shipped" onclick="markOrderAsShipped()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="truck" class="w-5 h-5"></i>
+                                <span>บันทึกสถานะ "จัดส่งพัสดุแล้ว"</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Printable Shipping Label Preview -->
+                    <div class="lg:col-span-6 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2 no-print">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">ตัวอย่างใบจ่าหน้าพัสดุ (4x6 นิ้ว)</span>
+                                <button onclick="window.print()" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-all">
+                                    <i data-lucide="printer" class="w-4 h-4"></i>
+                                    <span>สั่งพิมพ์ใบจ่าหน้า (Print)</span>
+                                </button>
+                            </div>
+
+                            <!-- ACTUAL PRINTABLE SHIPPING LABEL BOX -->
+                            <div id="print-label-area" class="border-2 border-slate-900 rounded-xl p-4 bg-white text-slate-900 space-y-3 shadow-sm">
+                                <!-- Label Header -->
+                                <div class="flex items-center justify-between border-b-2 border-slate-900 pb-2.5">
+                                    <div>
+                                        <div class="font-black text-lg tracking-tight">HERBALGLOW EXPRESS</div>
+                                        <div class="text-[11px] font-semibold text-slate-600">คลังสินค้าหลัก (รหัส 004)</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span id="label-payment-badge" class="inline-block border-2 border-slate-900 px-2 py-0.5 font-bold text-xs uppercase">COD</span>
+                                        <div id="label-order-id" class="font-mono font-bold text-xs mt-1">ORD-2026-001</div>
+                                    </div>
+                                </div>
+
+                                <!-- Sender Info -->
+                                <div class="text-xs border-b border-slate-300 pb-2">
+                                    <span class="font-bold">ผู้ส่ง (FROM):</span> ร้าน HERBALGLOW Official Store<br>
+                                    เลขที่ 99/4 ถ.พหลโยธิน แขวงอนุสาวรีย์ เขตบางเขน กรุงเทพฯ 10220 (โทร. 02-999-0004)
+                                </div>
+
+                                <!-- Receiver Info (Highlighted) -->
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-300 space-y-1">
+                                    <div class="text-[11px] font-bold uppercase text-slate-500">ผู้รับ (TO):</div>
+                                    <div id="label-cust-name" class="text-base font-bold text-slate-900">ชื่อลูกค้า</div>
+                                    <div id="label-cust-phone" class="text-sm font-semibold text-slate-800">โทร: 08x-xxx-xxxx</div>
+                                    <div id="label-cust-address" class="text-xs text-slate-700 leading-relaxed">ที่อยู่จัดส่ง...</div>
+                                    <div class="pt-1 flex items-center justify-between">
+                                        <span class="text-xs font-semibold">รหัสไปรษณีย์:</span>
+                                        <span id="label-cust-zip" class="text-lg font-black tracking-widest border border-slate-900 px-2.5 py-0.5 bg-white">10220</span>
+                                    </div>
+                                </div>
+
+                                <!-- Packing Slip SKU Summary inside Label -->
+                                <div class="border-t border-slate-300 pt-2">
+                                    <div class="text-[11px] font-bold uppercase text-slate-600 mb-1">รายการสินค้าในกล่อง (SKU Packing List):</div>
+                                    <div id="label-sku-list" class="text-xs font-mono space-y-1 bg-slate-100 p-2 rounded">
+                                        <!-- SKU items -->
+                                    </div>
+                                </div>
+
+                                <!-- Simulated Barcode & QR -->
+                                <div class="border-t-2 border-slate-900 pt-2.5 flex items-center justify-between gap-3">
+                                    <div class="flex-1">
+                                        <!-- SVG Barcode -->
+                                        <svg class="w-full h-10" viewBox="0 0 200 40" preserveAspectRatio="none">
+                                            <rect x="2" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="8" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="12" y="0" width="4" height="32" fill="#000"/>
+                                            <rect x="20" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="25" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="30" y="0" width="5" height="32" fill="#000"/>
+                                            <rect x="38" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="44" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="51" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="55" y="0" width="4" height="32" fill="#000"/>
+                                            <rect x="63" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="69" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="75" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="80" y="0" width="5" height="32" fill="#000"/>
+                                            <rect x="89" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="94" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="101" y="0" width="4" height="32" fill="#000"/>
+                                            <rect x="108" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="113" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="120" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="126" y="0" width="5" height="32" fill="#000"/>
+                                            <rect x="135" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="140" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="147" y="0" width="4" height="32" fill="#000"/>
+                                            <rect x="155" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="160" y="0" width="1" height="32" fill="#000"/>
+                                            <rect x="165" y="0" width="4" height="32" fill="#000"/>
+                                            <rect x="173" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="179" y="0" width="3" height="32" fill="#000"/>
+                                            <rect x="186" y="0" width="2" height="32" fill="#000"/>
+                                            <rect x="192" y="0" width="4" height="32" fill="#000"/>
+                                        </svg>
+                                        <div id="label-tracking-text" class="text-[10px] font-mono text-center tracking-widest">TH-004-8899210</div>
+                                    </div>
+                                    <!-- Mini QR Box -->
+                                    <div class="w-12 h-12 border border-slate-900 p-1 shrink-0 flex items-center justify-center">
+                                        <i data-lucide="qr-code" class="w-9 h-9 text-slate-900"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: GOOGLE SHEET WEBHOOK URL CONFIG     -->
+    <!-- ========================================== -->
+    <div id="sheet-config-modal" class="fixed inset-0 z-50 hidden overflow-y-auto no-print">
+        <div onclick="closeSheetConfigModal()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 z-10 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                        <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-600"></i>
+                        <span>เชื่อมต่อ Google Apps Script URL</span>
+                    </h3>
+                    <button onclick="closeSheetConfigModal()" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    หากคุณ Deploy Google Apps Script ตามคู่มือแล้ว สามารถนำลิงก์ Web App URL มาวางด้านล่าง เพื่อให้ทุกออเดอร์ถูกส่งเข้า Google Sheet ของคุณแบบ Real-time (หากเว้นว่างไว้ ระบบจะบันทึกใน Local Database จำลองแทน)
+                </p>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Google Apps Script Web App URL</label>
+                    <input type="url" id="google-sheet-url-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="closeSheetConfigModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+                    <button onclick="saveGoogleSheetUrl()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">บันทึกการเชื่อมต่อ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-auto no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div>
+                <span class="font-semibold text-slate-700">HERBALGLOW E-Commerce & WMS</span> — พัฒนาตามโจทย์ปฏิบัติการ รหัส 004
+            </div>
+            <div class="flex items-center gap-4">
+                <span>GitHub <code class="font-mono text-emerald-700">/images</code> Ready</span>
+                <span>•</span>
+                <span>Google Sheet Sync</span>
+                <span>•</span>
+                <span>Vercel Deployment</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT APPLICATION LOGIC               -->
+    <!-- ========================================== -->
+    <script>
+        // 1. PRODUCT CATALOG DATA (3 SKUs with GitHub images/ path + SVG fallback)
+        const PRODUCTS = [
+            {
+                sku: 'SKU-001',
+                name: 'แชมพูสมุนไพรอัญชันสด ลดผมขาดหลุดร่วง',
+                subtitle: 'Butterfly Pea & Ginseng Anti-Hair Fall Shampoo (300 ml)',
+                price: 289,
+                binLocation: 'ชั้นวาง A-01 (โซนสีม่วง)',
+                githubImagePath: 'images/sku-001-butterfly.jpg',
+                badge: 'ขายดีอันดับ 1',
+                badgeColor: 'bg-indigo-100 text-indigo-800',
+                accentColor: '#4f46e5',
+                description: 'ผสานสารสกัดดอกอัญชันเข้มข้นและรากโสม ช่วยกระตุ้นการไหลเวียนบริเวณรากผม ลดการขาดหลุดร่วง ให้ผมดกดำเงางามมีน้ำหนัก',
+                svgIllustration: `
+                    <svg viewBox="0 0 200 180" class="w-36 h-36 drop-shadow-md">
+                        <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#312e81;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <rect x="65" y="42" width="70" height="122" rx="16" fill="url(#grad1)"/>
+                        <rect x="85" y="22" width="30" height="20" rx="4" fill="#1e1b4b"/>
+                        <path d="M75 16 H125 L118 22 H82 Z" fill="#312e81"/>
+                        <rect x="73" y="68" width="54" height="72" rx="8" fill="#ffffff" opacity="0.95"/>
+                        <circle cx="100" cy="86" r="10" fill="#e0e7ff"/>
+                        <text x="100" y="90" font-size="9" font-weight="bold" text-anchor="middle" fill="#4338ca">001</text>
+                        <text x="100" y="110" font-size="9" font-weight="bold" text-anchor="middle" fill="#1e1b4b">HERBALGLOW</text>
+                        <text x="100" y="123" font-size="7" text-anchor="middle" fill="#4f46e5">สูตรอัญชันลดผมร่วง</text>
+                        <text x="100" y="134" font-size="6" text-anchor="middle" fill="#64748b">300 ml</text>
+                    </svg>`
+            },
+            {
+                sku: 'SKU-002',
+                name: 'แชมพูสมุนไพรสูตรเย็นสดชื่น ขจัดรังแค',
+                subtitle: 'Peppermint & Tea Tree Cool Anti-Dandruff Shampoo (300 ml)',
+                price: 259,
+                binLocation: 'ชั้นวาง A-02 (โซนสีเขียวมิ้นท์)',
+                githubImagePath: 'images/sku-002-menthol.jpg',
+                badge: 'เย็นสดชื่นทันที',
+                badgeColor: 'bg-teal-100 text-teal-800',
+                accentColor: '#0d9488',
+                description: 'สารสกัดเปปเปอร์มินต์และทีทรีออยล์ ควบคุมความมันส่วนเกินบนหนังศีรษะ ลดอาการคันและขจัดรังแคอย่างอ่อนโยน เย็นสบายยาวนาน',
+                svgIllustration: `
+                    <svg viewBox="0 0 200 180" class="w-36 h-36 drop-shadow-md">
+                        <defs>
+                            <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#115e59;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <rect x="65" y="42" width="70" height="122" rx="16" fill="url(#grad2)"/>
+                        <rect x="85" y="22" width="30" height="20" rx="4" fill="#134e4a"/>
+                        <path d="M75 16 H125 L118 22 H82 Z" fill="#042f2e"/>
+                        <rect x="73" y="68" width="54" height="72" rx="8" fill="#ffffff" opacity="0.95"/>
+                        <circle cx="100" cy="86" r="10" fill="#ccfbf1"/>
+                        <text x="100" y="90" font-size="9" font-weight="bold" text-anchor="middle" fill="#0f766e">002</text>
+                        <text x="100" y="110" font-size="9" font-weight="bold" text-anchor="middle" fill="#134e4a">HERBALGLOW</text>
+                        <text x="100" y="123" font-size="7" text-anchor="middle" fill="#0d9488">สูตรเย็นขจัดรังแค</text>
+                        <text x="100" y="134" font-size="6" text-anchor="middle" fill="#64748b">300 ml</text>
+                    </svg>`
+            },
+            {
+                sku: 'SKU-003',
+                name: 'ครีมนวดผมน้ำมันมะพร้าว & เคราติน บำรุงล้ำลึก',
+                subtitle: 'Virgin Coconut & Keratin Repair Conditioner (250 ml)',
+                price: 279,
+                binLocation: 'ชั้นวาง B-01 (โซนสีทอง)',
+                githubImagePath: 'images/sku-003-conditioner.jpg',
+                badge: 'ฟื้นฟูผมแห้งเสีย',
+                badgeColor: 'bg-amber-100 text-amber-800',
+                accentColor: '#d97706',
+                description: 'ทรีทเมนต์ครีมนวดเข้มข้นด้วยน้ำมันมะพร้าวสกัดเย็นและเคราตินธรรมชาติ ฟื้นฟูผมแห้งแตกปลายจากการทำสีและความร้อนให้นุ่มลื่นไม่พันกัน',
+                svgIllustration: `
+                    <svg viewBox="0 0 200 180" class="w-36 h-36 drop-shadow-md">
+                        <defs>
+                            <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#92400e;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <rect x="65" y="46" width="70" height="118" rx="16" fill="url(#grad3)"/>
+                        <rect x="85" y="26" width="30" height="20" rx="4" fill="#78350f"/>
+                        <rect x="73" y="70" width="54" height="70" rx="8" fill="#ffffff" opacity="0.95"/>
+                        <circle cx="100" cy="88" r="10" fill="#fef3c7"/>
+                        <text x="100" y="92" font-size="9" font-weight="bold" text-anchor="middle" fill="#b45309">003</text>
+                        <text x="100" y="112" font-size="9" font-weight="bold" text-anchor="middle" fill="#78350f">HERBALGLOW</text>
+                        <text x="100" y="125" font-size="7" text-anchor="middle" fill="#d97706">ครีมนวดเคราติน</text>
+                        <text x="100" y="136" font-size="6" text-anchor="middle" fill="#64748b">250 ml</text>
+                    </svg>`
+            }
+        ];
+
+        // 2. APPLICATION STATE (Cart + Simulated Google Sheet Orders Database)
+        let cart = [
+            { sku: 'SKU-001', qty: 1 }
+        ];
+
+        // Pre-populated realistic sample orders so warehouse Pick/Pack/Label can be tested immediately
+        const DEFAULT_ORDERS = [
+            {
+                orderId: 'ORD-004-101',
+                timestamp: '24/11/2026 14:15',
+                customerName: 'คุณกัญญารัตน์ ศรีสุข',
+                phone: '089-456-7890',
+                address: '88/12 หมู่บ้านพฤกษาวิลล์ ซ.ลาดพร้าว 71 แขวงสะพานสอง เขตวังทองหลาง กรุงเทพฯ',
+                zipCode: '10310',
+                payment: 'COD (เก็บเงินปลายทาง)',
+                items: [
+                    { sku: 'SKU-001', qty: 2 },
+                    { sku: 'SKU-003', qty: 1 }
+                ],
+                totalAmount: 857,
+                status: 'รอหยิบสินค้า'
+            },
+            {
+                orderId: 'ORD-004-102',
+                timestamp: '24/11/2026 14:42',
+                customerName: 'คุณณัฐพล วงศ์สุวรรณ',
+                phone: '081-987-6543',
+                address: '45/9 ถ.นิมมานเหมินท์ ซอย 9 ต.สุเทพ อ.เมืองเชียงใหม่ จ.เชียงใหม่',
+                zipCode: '50200',
+                payment: 'โอนเงินผ่านธนาคาร / PromptPay',
+                items: [
+                    { sku: 'SKU-002', qty: 3 }
+                ],
+                totalAmount: 777,
+                status: 'แพ็คเสร็จแล้ว'
+            }
+        ];
+
+        let orders = [];
+        let activeFulfillmentOrderId = null;
+        let googleSheetWebhookUrl = localStorage.getItem('herbalglow_sheet_url') || '';
+
+        // Load saved orders from localStorage or initialize with DEFAULT_ORDERS
+        function initData() {
+            const savedOrders = localStorage.getItem('herbalglow_orders_004');
+            if (savedOrders) {
+                try {
+                    orders = JSON.parse(savedOrders);
+                } catch (e) {
+                    orders = [...DEFAULT_ORDERS];
+                }
+            } else {
+                orders = [...DEFAULT_ORDERS];
+                saveOrdersToStorage();
+            }
+
+            if (googleSheetWebhookUrl) {
+                document.getElementById('google-sheet-url-input').value = googleSheetWebhookUrl;
+                updateSheetStatusBadge(true);
+            }
+        }
+
+        function saveOrdersToStorage() {
+            localStorage.setItem('herbalglow_orders_004', JSON.stringify(orders));
+            updatePendingBadge();
+        }
+
+        function updatePendingBadge() {
+            const pendingCount = orders.filter(o => o.status === 'รอหยิบสินค้า').length;
+            const badge = document.getElementById('pending-badge');
+            badge.textContent = pendingCount;
+            badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+        }
+
+        // 3. TAB SWITCHING LOGIC
+        function switchTab(tabName) {
+            const views = ['store', 'warehouse', 'guide'];
+            views.forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${v}`);
+                btn.classList.remove('bg-white', 'text-emerald-700', 'shadow-sm');
+                btn.classList.add('text-slate-600');
+            });
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.add('bg-white', 'text-emerald-700', 'shadow-sm');
+            activeBtn.classList.remove('text-slate-600');
+
+            // Toggle cart button visibility
+            document.getElementById('header-cart-btn-wrapper').style.display = (tabName === 'store') ? 'block' : 'none';
+
+            if (tabName === 'warehouse') {
+                renderWarehouseView();
+            }
+            lucide.createIcons();
+        }
+
+        // 4. RENDER STOREFRONT PRODUCTS
+        function renderProducts() {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = PRODUCTS.map(product => `
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden group">
+                    <!-- Product Image Container (Uses GitHub images/ path with automatic SVG fallback) -->
+                    <div class="relative bg-gradient-to-b from-slate-100 to-slate-50 h-56 flex items-center justify-center p-4 overflow-hidden">
+                        <span class="absolute top-3.5 left-3.5 px-2.5 py-1 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold shadow-xs z-10">
+                            ${product.sku}
+                        </span>
+                        <span class="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full ${product.badgeColor} text-xs font-semibold z-10">
+                            ${product.badge}
+                        </span>
+                        
+                        <!-- Attempt to load from github images/ folder, fallback gracefully to crisp custom SVG -->
+                        <img src="${product.githubImagePath}" 
+                             alt="${product.name}" 
+                             class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div style="display:none;" class="w-full h-full items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                            ${product.svgIllustration}
+                        </div>
+                    </div>
+
+                    <!-- Product Details -->
+                    <div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                <span>จุดเก็บคลัง: ${product.binLocation}</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-900 leading-snug">${product.name}</h3>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5">${product.subtitle}</p>
+                            <p class="text-sm text-slate-600 mt-3 leading-relaxed">${product.description}</p>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                            <div>
+                                <span class="text-xs text-slate-400 block">ราคาขาย</span>
+                                <span class="text-2xl font-bold text-emerald-600">฿${product.price.toLocaleString()}</span>
+                            </div>
+                            <button onclick="addToCart('${product.sku}')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-all flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                <span>เพิ่มลงตะกร้า</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // 5. SHOPPING CART FUNCTIONS
+        function addToCart(sku) {
+            const existing = cart.find(item => item.sku === sku);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.push({ sku, qty: 1 });
+            }
+            updateCartUI();
+            const prod = PRODUCTS.find(p => p.sku === sku);
+            showToast(`เพิ่ม ${prod.sku} (${prod.name}) ลงตะกร้าแล้ว`, 'success');
+        }
+
+        function updateCartQty(sku, delta) {
+            const index = cart.findIndex(item => item.sku === sku);
+            if (index === -1) return;
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) {
+                cart.splice(index, 1);
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+            const totalPrice = cart.reduce((sum, item) => {
+                const prod = PRODUCTS.find(p => p.sku === item.sku);
+                return sum + (prod ? prod.price * item.qty : 0);
+            }, 0);
+
+            document.getElementById('cart-count-badge').textContent = totalItems;
+            document.getElementById('form-cart-count').textContent = `${totalItems} ชิ้น`;
+            document.getElementById('checkout-total').textContent = `฿${totalPrice.toLocaleString()}`;
+            document.getElementById('drawer-cart-total').textContent = `฿${totalPrice.toLocaleString()}`;
+
+            // Render HTML for both Drawer and Checkout Form
+            const itemsHTML = cart.length === 0
+                ? `<div class="text-center py-8 text-slate-400 text-sm">
+                        <i data-lucide="shopping-basket" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
+                        <p>ยังไม่มีสินค้าในตะกร้า</p>
+                        <p class="text-xs mt-1">กรุณากดเพิ่มสินค้าด้านบน</p>
+                   </div>`
+                : cart.map(item => {
+                    const prod = PRODUCTS.find(p => p.sku === item.sku);
+                    return `
+                        <div class="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] font-bold">${prod.sku}</span>
+                                    <span class="text-xs font-semibold text-emerald-600">฿${(prod.price * item.qty).toLocaleString()}</span>
+                                </div>
+                                <p class="text-xs font-medium text-slate-800 truncate mt-1">${prod.name}</p>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+                                <button type="button" onclick="updateCartQty('${prod.sku}', -1)" class="w-6 h-6 rounded bg-white text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-200">-</button>
+                                <span class="w-6 text-center text-xs font-bold">${item.qty}</span>
+                                <button type="button" onclick="updateCartQty('${prod.sku}', 1)" class="w-6 h-6 rounded bg-white text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-200">+</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            document.getElementById('checkout-items-list').innerHTML = itemsHTML;
+            document.getElementById('drawer-cart-items').innerHTML = itemsHTML;
+            lucide.createIcons();
+        }
+
+        function toggleCartDrawer(open) {
+            const drawer = document.getElementById('cart-drawer');
+            if (open) {
+                drawer.classList.remove('hidden');
+            } else {
+                drawer.classList.add('hidden');
+            }
+        }
+
+        function proceedToCheckout() {
+            toggleCartDrawer(false);
+            document.getElementById('checkout-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 6. ORDER SUBMISSION (SAVES TO SIMULATED SHEET + OPTIONAL REAL WEBHOOK)
+        async function handleOrderSubmit(e) {
+            e.preventDefault();
+            if (cart.length === 0) {
+                showToast('กรุณาเลือกสินค้าอย่างน้อย 1 รายการก่อนสั่งซื้อ', 'error');
+                return;
+            }
+
+            const name = document.getElementById('cust-name').value.trim();
+            const phone = document.getElementById('cust-phone').value.trim();
+            const address = document.getElementById('cust-address').value.trim();
+            const zipCode = document.getElementById('cust-zip').value.trim();
+            const payment = document.getElementById('cust-payment').value;
+
+            const totalAmount = cart.reduce((sum, item) => {
+                const prod = PRODUCTS.find(p => p.sku === item.sku);
+                return sum + (prod ? prod.price * item.qty : 0);
+            }, 0);
+
+            const now = new Date();
+            const timestamp = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            const orderId = `ORD-004-${100 + orders.length + 1}`;
+
+            const newOrder = {
+                orderId,
+                timestamp,
+                customerName: name,
+                phone,
+                address,
+                zipCode,
+                payment,
+                items: JSON.parse(JSON.stringify(cart)),
+                totalAmount,
+                status: 'รอหยิบสินค้า'
+            };
+
+            // Add to top of database
+            orders.unshift(newOrder);
+            saveOrdersToStorage();
+
+            // If user configured a real Google Apps Script Web App URL, send POST request
+            if (googleSheetWebhookUrl) {
+                try {
+                    const itemsSummary = newOrder.items.map(i => `${i.sku} (x${i.qty})`).join(', ');
+                    await fetch(googleSheetWebhookUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId: newOrder.orderId,
+                            timestamp: newOrder.timestamp,
+                            customerName: newOrder.customerName,
+                            phone: newOrder.phone,
+                            address: newOrder.address,
+                            zipCode: newOrder.zipCode,
+                            itemsSummary,
+                            totalAmount: newOrder.totalAmount,
+                            status: newOrder.status
+                        })
+                    });
+                } catch (err) {
+                    console.error('Google Sheet Sync Error:', err);
+                }
+            }
+
+            // Reset form and cart
+            document.getElementById('order-form').reset();
+            cart = [];
+            updateCartUI();
+
+            showToast(`บันทึกออเดอร์ ${orderId} ลง Google Sheet เรียบร้อย!`, 'success');
+            
+            // Automatically switch to Warehouse view so student/grader can immediately test Pick & Pack
+            setTimeout(() => {
+                switchTab('warehouse');
+            }, 900);
+        }
+
+        // 7. WAREHOUSE VIEW & GOOGLE SHEET TABLE RENDERING
+        function renderWarehouseView() {
+            const filter = document.getElementById('filter-status').value;
+
+            // Update KPI Stats
+            document.getElementById('stat-total-orders').textContent = orders.length;
+            document.getElementById('stat-pending-orders').textContent = orders.filter(o => o.status === 'รอหยิบสินค้า').length;
+            document.getElementById('stat-packed-orders').textContent = orders.filter(o => o.status === 'แพ็คเสร็จแล้ว').length;
+            document.getElementById('stat-shipped-orders').textContent = orders.filter(o => o.status === 'จัดส่งแล้ว').length;
+
+            // Render Consolidated Pick List (Only for 'รอหยิบสินค้า')
+            const pendingOrders = orders.filter(o => o.status === 'รอหยิบสินค้า');
+            const pickTotals = {};
+            PRODUCTS.forEach(p => pickTotals[p.sku] = 0);
+            pendingOrders.forEach(order => {
+                order.items.forEach(item => {
+                    if (pickTotals[item.sku] !== undefined) {
+                        pickTotals[item.sku] += item.qty;
+                    }
+                });
+            });
+
+            document.getElementById('batch-pick-summary').innerHTML = PRODUCTS.map(prod => {
+                const count = pickTotals[prod.sku];
+                return `
+                    <div class="flex items-center justify-between p-3.5 rounded-xl border ${count > 0 ? 'bg-amber-50/70 border-amber-200' : 'bg-slate-50 border-slate-200'}">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold">${prod.sku}</span>
+                                <span class="text-xs text-slate-500">${prod.binLocation}</span>
+                            </div>
+                            <p class="text-xs font-semibold text-slate-800 mt-1">${prod.name}</p>
+                        </div>
+                        <div class="text-right pl-2">
+                            <span class="text-2xl font-black ${count > 0 ? 'text-amber-600' : 'text-slate-400'}">${count}</span>
+                            <span class="block text-[11px] text-slate-500">ขวดที่ต้องหยิบ</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Render Orders Table Rows
+            const filteredOrders = filter === 'ALL' ? orders : orders.filter(o => o.status === filter);
+            const tbody = document.getElementById('orders-table-body');
+
+            if (filteredOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">ไม่พบรายการออเดอร์ในหมวดหมู่นี้</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filteredOrders.map(order => {
+                let statusBadge = '';
+                if (order.status === 'รอหยิบสินค้า') {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>รอหยิบสินค้า</span>`;
+                } else if (order.status === 'แพ็คเสร็จแล้ว') {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>แพ็คเสร็จแล้ว</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>จัดส่งแล้ว</span>`;
+                }
+
+                const skuBadges = order.items.map(item => {
+                    const p = PRODUCTS.find(prod => prod.sku === item.sku);
+                    return `<div class="flex items-center gap-1.5 text-xs">
+                                <span class="font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-white">${item.sku}</span>
+                                <span class="text-slate-700 font-medium">${p ? p.name.substring(0, 22) + '...' : ''}</span>
+                                <span class="font-bold text-emerald-700 bg-emerald-50 px-1.5 rounded">x${item.qty}</span>
+                            </div>`;
+                }).join('');
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-mono font-bold text-slate-900 border-r border-slate-200 whitespace-nowrap">${order.orderId}</td>
+                        <td class="py-3.5 px-4 text-xs text-slate-500 border-r border-slate-200 whitespace-nowrap">${order.timestamp}</td>
+                        <td class="py-3.5 px-4 border-r border-slate-200 max-w-xs">
+                            <div class="font-semibold text-slate-900">${order.customerName}</div>
+                            <div class="text-xs text-emerald-700 font-medium">${order.phone}</div>
+                            <div class="text-xs text-slate-500 mt-0.5 line-clamp-2">${order.address} (${order.zipCode})</div>
+                        </td>
+                        <td class="py-3.5 px-4 border-r border-slate-200 space-y-1.5">
+                            ${skuBadges}
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-bold text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                            ฿${order.totalAmount.toLocaleString()}
+                            <span class="block text-[10px] font-normal text-slate-400">${order.payment}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center border-r border-slate-200 whitespace-nowrap">
+                            ${statusBadge}
+                        </td>
+                        <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                            <button onclick="openFulfillmentModal('${order.orderId}')" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-all">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                <span>หยิบ-แพ็ค & ใบจ่าหน้า</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // 8. PICK, PACK & SHIPPING LABEL MODAL LOGIC
+        function openFulfillmentModal(orderId) {
+            activeFulfillmentOrderId = orderId;
+            const order = orders.find(o => o.orderId === orderId);
+            if (!order) return;
+
+            // Populate Pick & Pack Interactive Checklist
+            const checklistContainer = document.getElementById('modal-pick-checklist');
+            checklistContainer.innerHTML = order.items.map((item, idx) => {
+                const prod = PRODUCTS.find(p => p.sku === item.sku);
+                const isAlreadyPacked = order.status !== 'รอหยิบสินค้า';
+                return `
+                    <label class="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-emerald-50/40 cursor-pointer transition-all">
+                        <input type="checkbox" ${isAlreadyPacked ? 'checked' : ''} class="pick-item-checkbox mt-1 w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <span class="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-xs font-bold">${item.sku}</span>
+                                <span class="text-sm font-black text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-lg">จำนวน: ${item.qty} ชิ้น</span>
+                            </div>
+                            <p class="text-sm font-bold text-slate-900 mt-1">${prod ? prod.name : item.sku}</p>
+                            <p class="text-xs text-slate-500 mt-0.5">ตำแหน่งจัดเก็บ: ${prod ? prod.binLocation : '-'}</p>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+
+            // Populate Shipping Label Preview
+            document.getElementById('label-order-id').textContent = order.orderId;
+            document.getElementById('label-payment-badge').textContent = order.payment.includes('COD') ? `COD ฿${order.totalAmount}` : 'PAID (ชำระแล้ว)';
+            document.getElementById('label-cust-name').textContent = order.customerName;
+            document.getElementById('label-cust-phone').textContent = `โทร: ${order.phone}`;
+            document.getElementById('label-cust-address').textContent = order.address;
+            document.getElementById('label-cust-zip').textContent = order.zipCode;
+            document.getElementById('label-tracking-text').textContent = `TH-004-${order.orderId.replace(/\D/g, '')}99`;
+
+            document.getElementById('label-sku-list').innerHTML = order.items.map(item => {
+                const prod = PRODUCTS.find(p => p.sku === item.sku);
+                return `<div class="flex justify-between">
+                            <span>[${item.sku}] ${prod ? prod.name : ''}</span>
+                            <span class="font-bold">x${item.qty}</span>
+                        </div>`;
+            }).join('');
+
+            document.getElementById('fulfillment-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeFulfillmentModal() {
+            document.getElementById('fulfillment-modal').classList.add('hidden');
+            activeFulfillmentOrderId = null;
+        }
+
+        function markOrderAsPacked() {
+            const checkboxes = document.querySelectorAll('.pick-item-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            if (!allChecked) {
+                showToast('กรุณาติ๊กตรวจสอบรายการสินค้าให้ครบทุก SKU ก่อนยืนยันการแพ็ค!', 'error');
+                return;
+            }
+
+            const order = orders.find(o => o.orderId === activeFulfillmentOrderId);
+            if (order) {
+                order.status = 'แพ็คเสร็จแล้ว';
+                saveOrdersToStorage();
+                renderWarehouseView();
+                showToast(`อัปเดตออเดอร์ ${order.orderId} เป็น "แพ็คเสร็จแล้ว" พร้อมพิมพ์ใบปะหน้า`, 'success');
+            }
+        }
+
+        function markOrderAsShipped() {
+            const order = orders.find(o => o.orderId === activeFulfillmentOrderId);
+            if (order) {
+                order.status = 'จัดส่งแล้ว';
+                saveOrdersToStorage();
+                renderWarehouseView();
+                closeFulfillmentModal();
+                showToast(`บันทึกการจัดส่งพัสดุ ${order.orderId} เรียบร้อยแล้ว`, 'success');
+            }
+        }
+
+        // 9. EXPORT CSV (GOOGLE SHEET COMPATIBLE)
+        function exportToCSV() {
+            const headers = ['OrderID', 'Timestamp', 'CustomerName', 'Phone', 'Address', 'ZipCode', 'ItemsSKU', 'TotalAmount', 'Status'];
+            const rows = orders.map(o => {
+                const itemsStr = o.items.map(i => `${i.sku}x${i.qty}`).join('; ');
+                return [
+                    o.orderId,
+                    o.timestamp,
+                    `"${o.customerName}"`,
+                    `"${o.phone}"`,
+                    `"${o.address.replace(/"/g, '""')}"`,
+                    o.zipCode,
+                    `"${itemsStr}"`,
+                    o.totalAmount,
+                    `"${o.status}"`
+                ].join(',');
+            });
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `HerbalGlow_Orders_004_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('ดาวน์โหลดไฟล์ CSV สำหรับนำเข้า Google Sheet เรียบร้อยแล้ว', 'success');
+        }
+
+        // 10. GOOGLE SHEET CONFIG MODAL & HELPERS
+        function openSheetConfigModal() {
+            document.getElementById('sheet-config-modal').classList.remove('hidden');
+        }
+
+        function closeSheetConfigModal() {
+            document.getElementById('sheet-config-modal').classList.add('hidden');
+        }
+
+        function saveGoogleSheetUrl() {
+            const url = document.getElementById('google-sheet-url-input').value.trim();
+            googleSheetWebhookUrl = url;
+            localStorage.setItem('herbalglow_sheet_url', url);
+            updateSheetStatusBadge(Boolean(url));
+            closeSheetConfigModal();
+            showToast(url ? 'เชื่อมต่อ Google Apps Script URL เรียบร้อยแล้ว!' : 'สลับกลับเป็นโหมดจำลอง Google Sheet ในเบราว์เซอร์', 'success');
+        }
+
+        function updateSheetStatusBadge(isLive) {
+            const badge = document.getElementById('sheet-status-badge');
+            if (isLive) {
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> เชื่อมต่อ Google Sheet Live Webhook แล้ว`;
+            } else {
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> จำลองการเชื่อมต่อ Sheet พร้อมใช้งาน`;
+            }
+        }
+
+        function copyAppsScript() {
+            const codeText = document.getElementById('apps-script-code').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = codeText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('คัดลอกโค้ด Google Apps Script ลงคลิปบอร์ดแล้ว', 'success');
+        }
+
+        // 11. CUSTOM TOAST NOTIFICATION
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-rose-600' : 'bg-slate-900';
+            const icon = type === 'error' ? 'alert-circle' : 'check-circle-2';
+
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 text-emerald-400 shrink-0"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        // Initialize App on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            initData();
+            renderProducts();
+            updateCartUI();
+            updatePendingBadge();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
